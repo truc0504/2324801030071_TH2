@@ -33,10 +33,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String _display = "0";
   bool _isEquationFinished = false;
 
-  // Lịch sử tính toán
   final List<String> _history = [];
+  final List<String> _memoryHistory = [];
 
-  // Bộ nhớ của máy tính
   num _memory = 0;
 
   final List<String> _operators = ["+", "-", "×", "÷"];
@@ -117,10 +116,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     _addNumber(text);
   }
-
-  // =========================
-  // NHẬP SỐ
-  // =========================
 
   void _addNumber(String text) {
     setState(() {
@@ -211,11 +206,11 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     });
   }
 
-  // =========================
-  // PHÉP TÍNH CƠ BẢN
-  // =========================
-
   void _calculate() {
+    if (_isEquationFinished) {
+      return;
+    }
+
     if (_isError() ||
         _display == "-" ||
         _display.endsWith(",") ||
@@ -224,11 +219,20 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
 
     String oldExpression = _display;
+
+    if (_containsDivisionByZero(oldExpression)) {
+      setState(() {
+        _display = "Cannot divide by zero";
+        _isEquationFinished = true;
+      });
+      return;
+    }
+
     num? result = _evaluateExpression(_display);
 
     if (result == null) {
       setState(() {
-        _display = "Lỗi phép tính";
+        _display = "Invalid operation";
         _isEquationFinished = true;
       });
       return;
@@ -240,7 +244,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       _display = formattedResult;
       _isEquationFinished = true;
 
-      _addHistory("$oldExpression = $formattedResult");
+      _addHistory(
+        "$oldExpression = $formattedResult",
+      );
     });
   }
 
@@ -252,10 +258,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           .replaceAll(",", ".");
 
       ExpressionParser parser = GrammarParser();
-      Expression exp = parser.parse(convertedExpression);
+
+      Expression exp = parser.parse(
+        convertedExpression,
+      );
 
       ContextModel contextModel = ContextModel();
-      RealEvaluator evaluator = RealEvaluator(contextModel);
+
+      RealEvaluator evaluator = RealEvaluator(
+        contextModel,
+      );
 
       num result = evaluator.evaluate(exp);
 
@@ -269,106 +281,173 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
   }
 
-  // =========================
-  // CHỨC NĂNG NÂNG CAO
-  // =========================
-
-  void _square() {
-    num? value = _evaluateCurrentValue();
-
-    if (value == null) {
-      return;
+  String? _getCurrentNumber() {
+    if (_isError() ||
+        _display == "-" ||
+        _display.endsWith(",") ||
+        _endsWithOperator()) {
+      return null;
     }
 
-    String oldValue = _display;
+    int operatorIndex = _findLastBinaryOperator();
+
+    if (operatorIndex == -1) {
+      return _display;
+    }
+
+    return _display.substring(operatorIndex + 1);
+  }
+
+  void _replaceCurrentNumber(String newValue) {
+    int operatorIndex = _findLastBinaryOperator();
+
+    if (operatorIndex == -1) {
+      _display = newValue;
+    } else {
+      _display =
+          _display.substring(0, operatorIndex + 1) +
+          newValue;
+    }
+  }
+
+  void _square() {
+    String? currentText = _getCurrentNumber();
+
+    if (currentText == null) return;
+
+    num? value = num.tryParse(
+      currentText.replaceAll(",", "."),
+    );
+
+    if (value == null) return;
+
     num result = value * value;
+
     String formattedResult = _formatNumber(result);
 
-    setState(() {
-      _display = formattedResult;
-      _isEquationFinished = true;
+    int operatorIndex = _findLastBinaryOperator();
 
-      _addHistory("$oldValue² = $formattedResult");
+    bool isPartOfExpression = operatorIndex != -1;
+
+    setState(() {
+      _replaceCurrentNumber(formattedResult);
+
+      _isEquationFinished = !isPartOfExpression;
+
+      _addHistory(
+        "($currentText)² = $formattedResult",
+      );
     });
   }
 
   void _squareRoot() {
-    num? value = _evaluateCurrentValue();
+    String? currentText = _getCurrentNumber();
 
-    if (value == null) {
-      return;
-    }
+    if (currentText == null) return;
+
+    num? value = num.tryParse(
+      currentText.replaceAll(",", "."),
+    );
+
+    if (value == null) return;
 
     if (value < 0) {
       setState(() {
-        _display = "Không thể căn số âm";
+        _display = "Invalid input";
         _isEquationFinished = true;
       });
       return;
     }
 
-    String oldValue = _display;
     num result = math.sqrt(value);
+
     String formattedResult = _formatNumber(result);
 
-    setState(() {
-      _display = formattedResult;
-      _isEquationFinished = true;
+    int operatorIndex = _findLastBinaryOperator();
 
-      _addHistory("√($oldValue) = $formattedResult");
+    bool isPartOfExpression = operatorIndex != -1;
+
+    setState(() {
+      _replaceCurrentNumber(formattedResult);
+
+      _isEquationFinished = !isPartOfExpression;
+
+      _addHistory(
+        "√($currentText) = $formattedResult",
+      );
     });
   }
 
   void _reciprocal() {
-    num? value = _evaluateCurrentValue();
+    String? currentText = _getCurrentNumber();
 
-    if (value == null) {
-      return;
-    }
+    if (currentText == null) return;
+
+    num? value = num.tryParse(
+      currentText.replaceAll(",", "."),
+    );
+
+    if (value == null) return;
 
     if (value == 0) {
       setState(() {
-        _display = "Không thể chia cho 0";
+        _display = "Cannot divide by zero";
         _isEquationFinished = true;
       });
       return;
     }
 
-    String oldValue = _display;
     num result = 1 / value;
+
     String formattedResult = _formatNumber(result);
 
-    setState(() {
-      _display = formattedResult;
-      _isEquationFinished = true;
+    int operatorIndex = _findLastBinaryOperator();
 
-      _addHistory("1/($oldValue) = $formattedResult");
+    bool isPartOfExpression = operatorIndex != -1;
+
+    setState(() {
+      _replaceCurrentNumber(formattedResult);
+
+      _isEquationFinished = !isPartOfExpression;
+
+      _addHistory(
+        "1/($currentText) = $formattedResult",
+      );
     });
   }
 
   void _percent() {
-    num? value = _evaluateCurrentValue();
+    String? currentText = _getCurrentNumber();
 
-    if (value == null) {
-      return;
-    }
+    if (currentText == null) return;
 
-    String oldValue = _display;
+    num? value = num.tryParse(
+      currentText.replaceAll(",", "."),
+    );
+
+    if (value == null) return;
+
     num result = value / 100;
+
     String formattedResult = _formatNumber(result);
 
-    setState(() {
-      _display = formattedResult;
-      _isEquationFinished = true;
+    int operatorIndex = _findLastBinaryOperator();
 
-      _addHistory("$oldValue% = $formattedResult");
+    bool isPartOfExpression = operatorIndex != -1;
+
+    setState(() {
+      _replaceCurrentNumber(formattedResult);
+
+      _isEquationFinished = !isPartOfExpression;
+
+      _addHistory(
+        "$currentText% = $formattedResult",
+      );
     });
   }
 
   void _toggleSign() {
-    if (_isError()) {
-      return;
-    }
+    if (_isError()) return;
 
     setState(() {
       if (_isEquationFinished) {
@@ -384,9 +463,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       int operatorIndex = _findLastBinaryOperator();
 
       if (operatorIndex == -1) {
-        if (_display == "0") {
-          return;
-        }
+        if (_display == "0") return;
 
         if (_display.startsWith("-")) {
           _display = _display.substring(1);
@@ -415,10 +492,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     });
   }
 
-  // =========================
-  // CE VÀ BACKSPACE
-  // =========================
-
   void _clearEntry() {
     setState(() {
       if (_isError() || _isEquationFinished) {
@@ -432,7 +505,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (operatorIndex == -1) {
         _display = "0";
       } else {
-        _display = _display.substring(0, operatorIndex + 1);
+        _display =
+            _display.substring(0, operatorIndex + 1);
       }
     });
   }
@@ -446,7 +520,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       }
 
       if (_display.length > 1) {
-        _display = _display.substring(0, _display.length - 1);
+        _display =
+            _display.substring(0, _display.length - 1);
 
         if (_display == "-") {
           _display = "0";
@@ -457,63 +532,101 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     });
   }
 
-  // =========================
-  // BỘ NHỚ
-  // =========================
-
   void _memoryStore() {
     num? value = _evaluateCurrentValue();
 
-    if (value == null) {
-      return;
-    }
+    if (value == null) return;
+
+    String formattedValue = _formatNumber(value);
 
     setState(() {
       _memory = value;
+
+      _addMemoryHistory(
+        "MS: $formattedValue → M = ${_formatNumber(_memory)}",
+      );
     });
 
-    _showMessage("Đã lưu MS = ${_formatNumber(_memory)}");
+    _showMessage(
+      "Memory stored: ${_formatNumber(_memory)}",
+    );
   }
 
   void _memoryAdd() {
     num? value = _evaluateCurrentValue();
 
-    if (value == null) {
-      return;
-    }
+    if (value == null) return;
+
+    num oldMemory = _memory;
+
+    String formattedValue = _formatNumber(value);
 
     setState(() {
       _memory += value;
+
+      _addMemoryHistory(
+        "M+: ${_formatNumber(oldMemory)} + "
+        "$formattedValue = ${_formatNumber(_memory)}",
+      );
     });
 
-    _showMessage("M = ${_formatNumber(_memory)}");
+    _showMessage(
+      "Memory: ${_formatNumber(_memory)}",
+    );
   }
 
   void _memorySubtract() {
     num? value = _evaluateCurrentValue();
 
-    if (value == null) {
-      return;
-    }
+    if (value == null) return;
+
+    num oldMemory = _memory;
+
+    String formattedValue = _formatNumber(value);
 
     setState(() {
       _memory -= value;
+
+      _addMemoryHistory(
+        "M-: ${_formatNumber(oldMemory)} - "
+        "$formattedValue = ${_formatNumber(_memory)}",
+      );
     });
 
-    _showMessage("M = ${_formatNumber(_memory)}");
+    _showMessage(
+      "Memory: ${_formatNumber(_memory)}",
+    );
   }
-
-  // =========================
-  // LỊCH SỬ
-  // =========================
 
   void _addHistory(String calculation) {
     _history.insert(0, calculation);
 
-    // Không để lịch sử quá dài
     if (_history.length > 50) {
       _history.removeLast();
     }
+  }
+
+  void _addMemoryHistory(String memoryAction) {
+    _memoryHistory.insert(0, memoryAction);
+
+    if (_memoryHistory.length > 50) {
+      _memoryHistory.removeLast();
+    }
+  }
+
+  void _useSavedValue(String item) {
+    int equalIndex = item.lastIndexOf("=");
+
+    if (equalIndex == -1) return;
+
+    String value = item.substring(equalIndex + 1).trim();
+
+    setState(() {
+      _display = value;
+      _isEquationFinished = true;
+    });
+
+    Navigator.pop(context);
   }
 
   void _showHistory() {
@@ -522,87 +635,238 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       backgroundColor: const Color(0xFF242424),
       isScrollControlled: true,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return SafeArea(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.55,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        20,
-                        16,
-                        12,
-                        8,
-                      ),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              "Lịch sử tính toán",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+        return DefaultTabController(
+          length: 2,
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return SafeArea(
+                child: SizedBox(
+                  height:
+                      MediaQuery.of(context).size.height *
+                      0.60,
+                  child: Column(
+                    children: [
+                      const TabBar(
+                        tabs: [
+                          Tab(
+                            icon: Icon(Icons.history),
+                            text: "History",
                           ),
-                          if (_history.isNotEmpty)
-                            IconButton(
-                              tooltip: "Xóa lịch sử",
-                              onPressed: () {
-                                setState(() {
-                                  _history.clear();
-                                });
-
-                                setModalState(() {});
-                              },
-                              icon: const Icon(Icons.delete_outline),
-                            ),
+                          Tab(
+                            icon: Icon(Icons.memory),
+                            text: "Memory",
+                          ),
                         ],
                       ),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: _history.isEmpty
-                          ? const Center(
-                              child: Text(
-                                "Chưa có phép tính nào",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _history.length,
-                              separatorBuilder: (context, index) =>
-                                  const Divider(),
-                              itemBuilder: (context, index) {
-                                return Text(
-                                  _history[index],
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(
-                                    fontSize: 20,
+
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            Column(
+                              children: [
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(
+                                    20,
+                                    10,
+                                    12,
+                                    5,
                                   ),
-                                );
-                              },
+                                  child: Row(
+                                    children: [
+                                      const Expanded(
+                                        child: Text(
+                                          "History",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight:
+                                                FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+
+                                      if (_history.isNotEmpty)
+                                        IconButton(
+                                          tooltip:
+                                              "Clear History",
+                                          onPressed: () {
+                                            setState(() {
+                                              _history.clear();
+                                            });
+
+                                            setModalState(() {});
+                                          },
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+
+                                const Divider(height: 1),
+
+                                Expanded(
+                                  child: _history.isEmpty
+                                      ? const Center(
+                                          child: Text(
+                                            "No history",
+                                            style: TextStyle(
+                                              color:
+                                                  Colors.grey,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        )
+                                      : ListView.separated(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                          itemCount:
+                                              _history.length,
+                                          separatorBuilder:
+                                              (context, index) =>
+                                                  const Divider(
+                                            height: 1,
+                                          ),
+                                          itemBuilder:
+                                              (context, index) {
+                                            return ListTile(
+                                              onTap: () {
+                                                _useSavedValue(
+                                                  _history[index],
+                                                );
+                                              },
+                                              title: Text(
+                                                _history[index],
+                                                textAlign:
+                                                    TextAlign.right,
+                                                style:
+                                                    const TextStyle(
+                                                  fontSize: 20,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                ),
+                              ],
                             ),
-                    ),
-                  ],
+
+                            Column(
+                              children: [
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(
+                                    20,
+                                    10,
+                                    12,
+                                    5,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          "Memory: ${_formatNumber(_memory)}",
+                                          style:
+                                              const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight:
+                                                FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+
+                                      if (_memory != 0 ||
+                                          _memoryHistory
+                                              .isNotEmpty)
+                                        IconButton(
+                                          tooltip:
+                                              "Clear Memory",
+                                          onPressed: () {
+                                            setState(() {
+                                              _memory = 0;
+                                              _memoryHistory
+                                                  .clear();
+                                            });
+
+                                            setModalState(() {});
+                                          },
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+
+                                const Divider(height: 1),
+
+                                Expanded(
+                                  child:
+                                      _memoryHistory.isEmpty
+                                      ? const Center(
+                                          child: Text(
+                                            "No memory history",
+                                            style: TextStyle(
+                                              color:
+                                                  Colors.grey,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        )
+                                      : ListView.separated(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                          itemCount:
+                                              _memoryHistory
+                                                  .length,
+                                          separatorBuilder:
+                                              (context, index) =>
+                                                  const Divider(
+                                            height: 1,
+                                          ),
+                                          itemBuilder:
+                                              (context, index) {
+                                            return ListTile(
+                                              onTap: () {
+                                                _useSavedValue(
+                                                  _memoryHistory[
+                                                      index],
+                                                );
+                                              },
+                                              title: Text(
+                                                _memoryHistory[
+                                                    index],
+                                                textAlign:
+                                                    TextAlign.right,
+                                                style:
+                                                    const TextStyle(
+                                                  fontSize: 20,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
   }
-
-  // =========================
-  // HÀM HỖ TRỢ
-  // =========================
 
   num? _evaluateCurrentValue() {
     if (_isError() ||
@@ -620,13 +884,26 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       return false;
     }
 
-    return _operators.contains(_display[_display.length - 1]);
+    return _operators.contains(
+      _display[_display.length - 1],
+    );
   }
 
   bool _isError() {
-    return _display == "Lỗi phép tính" ||
-        _display == "Không thể chia cho 0" ||
-        _display == "Không thể căn số âm";
+    return _display == "Invalid operation" ||
+        _display == "Cannot divide by zero" ||
+        _display == "Invalid input";
+  }
+
+  bool _containsDivisionByZero(String expression) {
+    String converted =
+        expression.replaceAll(",", ".");
+
+    RegExp divideByZero = RegExp(
+      r'÷-?0+(?:\.0+)?(?=$|[+\-×÷])',
+    );
+
+    return divideByZero.hasMatch(converted);
   }
 
   int _findLastBinaryOperator() {
@@ -637,12 +914,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         continue;
       }
 
-      // Dấu trừ ở đầu là dấu âm, không phải phép trừ
       if (character == "-" && i == 0) {
         continue;
       }
 
-      // Dấu trừ đứng sau một toán tử là dấu âm của số
       if (character == "-" &&
           i > 0 &&
           _operators.contains(_display[i - 1])) {
@@ -658,15 +933,22 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String _formatNumber(num value) {
     double number = value.toDouble();
 
-    if ((number - number.round()).abs() < 0.00000001) {
+    if ((number - number.round()).abs() <
+        0.00000001) {
       return number.round().toString();
     }
 
     String result = number.toStringAsFixed(8);
 
     result = result
-        .replaceFirst(RegExp(r'0+$'), '')
-        .replaceFirst(RegExp(r'\.$'), '');
+        .replaceFirst(
+          RegExp(r'0+$'),
+          '',
+        )
+        .replaceFirst(
+          RegExp(r'\.$'),
+          '',
+        );
 
     return result.replaceAll(".", ",");
   }
@@ -677,14 +959,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          duration: const Duration(seconds: 1),
+          duration: const Duration(
+            seconds: 1,
+          ),
         ),
       );
   }
-
-  // =========================
-  // GIAO DIỆN
-  // =========================
 
   @override
   Widget build(BuildContext context) {
@@ -703,16 +983,18 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: "Lịch sử",
+            tooltip: "History",
             onPressed: _showHistory,
-            icon: const Icon(Icons.history),
+            icon: const Icon(
+              Icons.history,
+            ),
           ),
         ],
       ),
+
       body: SafeArea(
         child: Column(
           children: [
-            // Khu vực hiển thị
             Expanded(
               child: Container(
                 alignment: Alignment.bottomRight,
@@ -724,7 +1006,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   _display,
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize: _display.length > 15 ? 42 : 64,
+                    fontSize:
+                        _display.length > 15 ? 42 : 64,
                     fontWeight: FontWeight.w300,
                   ),
                   maxLines: 1,
@@ -733,26 +1016,49 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               ),
             ),
 
-            // Các nút bộ nhớ
             _buildMemoryRow(),
 
-            // Hàng 1
-            _buildRow(["%", "CE", "C", "⌫"]),
+            _buildRow([
+              "%",
+              "CE",
+              "C",
+              "⌫",
+            ]),
 
-            // Hàng 2
-            _buildRow(["1/x", "x²", "√x", "÷"]),
+            _buildRow([
+              "1/x",
+              "x²",
+              "√x",
+              "÷",
+            ]),
 
-            // Hàng 3
-            _buildRow(["7", "8", "9", "×"]),
+            _buildRow([
+              "7",
+              "8",
+              "9",
+              "×",
+            ]),
 
-            // Hàng 4
-            _buildRow(["4", "5", "6", "-"]),
+            _buildRow([
+              "4",
+              "5",
+              "6",
+              "-",
+            ]),
 
-            // Hàng 5
-            _buildRow(["1", "2", "3", "+"]),
+            _buildRow([
+              "1",
+              "2",
+              "3",
+              "+",
+            ]),
 
-            // Hàng 6
-            _buildRow(["+/-", "0", ",", "="]),
+            _buildRow([
+              "+/-",
+              "0",
+              ",",
+              "=",
+            ]),
 
             const SizedBox(height: 12),
           ],
@@ -766,9 +1072,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       height: 48,
       child: Row(
         children: [
-          Expanded(child: _buildMemoryButton("M+")),
-          Expanded(child: _buildMemoryButton("M-")),
-          Expanded(child: _buildMemoryButton("MS")),
+          Expanded(
+            child: _buildMemoryButton("M+"),
+          ),
+          Expanded(
+            child: _buildMemoryButton("M-"),
+          ),
+          Expanded(
+            child: _buildMemoryButton("MS"),
+          ),
         ],
       ),
     );
@@ -813,7 +1125,11 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     if (text == "=") {
       bgColor = const Color(0xFF76C7FF);
       textColor = Colors.black;
-    } else if (["0", ",", "+/-"].contains(text)) {
+    } else if ([
+      "0",
+      ",",
+      "+/-",
+    ].contains(text)) {
       bgColor = const Color(0xFF2D2D2D);
     } else if ([
       "÷",
@@ -850,8 +1166,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           text,
           style: TextStyle(
             fontSize: isSpecial ? 25 : 19,
-            fontWeight:
-                isSpecial ? FontWeight.bold : FontWeight.normal,
+            fontWeight: isSpecial
+                ? FontWeight.bold
+                : FontWeight.normal,
           ),
         ),
       ),
