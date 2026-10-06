@@ -37,6 +37,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   final List<String> _memoryHistory = [];
 
   num _memory = 0;
+  bool _hasMemory = false;
 
   final List<String> _operators = ["+", "-", "×", "÷"];
 
@@ -86,6 +87,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     if (text == "+/-") {
       _toggleSign();
+      return;
+    }
+
+    if (text == "MC") {
+      _memoryClear();
+      return;
+    }
+
+    if (text == "MR") {
+      _memoryRecall();
       return;
     }
 
@@ -148,7 +159,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       }
 
       int operatorIndex = _findLastBinaryOperator();
-
       String currentNumber;
 
       if (operatorIndex == -1) {
@@ -196,8 +206,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       String lastCharacter = _display[_display.length - 1];
 
       if (_operators.contains(lastCharacter)) {
-        _display =
-            _display.substring(0, _display.length - 1) + text;
+        _display = _display.substring(0, _display.length - 1) + text;
       } else {
         _display += text;
       }
@@ -243,10 +252,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     setState(() {
       _display = formattedResult;
       _isEquationFinished = true;
-
-      _addHistory(
-        "$oldExpression = $formattedResult",
-      );
+      _addHistory("$oldExpression = $formattedResult");
     });
   }
 
@@ -258,17 +264,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           .replaceAll(",", ".");
 
       ExpressionParser parser = GrammarParser();
-
-      Expression exp = parser.parse(
-        convertedExpression,
-      );
-
+      Expression exp = parser.parse(convertedExpression);
       ContextModel contextModel = ContextModel();
-
-      RealEvaluator evaluator = RealEvaluator(
-        contextModel,
-      );
-
+      RealEvaluator evaluator = RealEvaluator(contextModel);
       num result = evaluator.evaluate(exp);
 
       if (result.isInfinite || result.isNaN) {
@@ -304,51 +302,35 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     if (operatorIndex == -1) {
       _display = newValue;
     } else {
-      _display =
-          _display.substring(0, operatorIndex + 1) +
-          newValue;
+      _display = _display.substring(0, operatorIndex + 1) + newValue;
     }
   }
 
   void _square() {
     String? currentText = _getCurrentNumber();
-
     if (currentText == null) return;
 
-    num? value = num.tryParse(
-      currentText.replaceAll(",", "."),
-    );
-
+    num? value = num.tryParse(currentText.replaceAll(",", "."));
     if (value == null) return;
 
     num result = value * value;
-
     String formattedResult = _formatNumber(result);
 
     int operatorIndex = _findLastBinaryOperator();
-
     bool isPartOfExpression = operatorIndex != -1;
 
     setState(() {
       _replaceCurrentNumber(formattedResult);
-
       _isEquationFinished = !isPartOfExpression;
-
-      _addHistory(
-        "($currentText)² = $formattedResult",
-      );
+      _addHistory("($currentText)² = $formattedResult");
     });
   }
 
   void _squareRoot() {
     String? currentText = _getCurrentNumber();
-
     if (currentText == null) return;
 
-    num? value = num.tryParse(
-      currentText.replaceAll(",", "."),
-    );
-
+    num? value = num.tryParse(currentText.replaceAll(",", "."));
     if (value == null) return;
 
     if (value < 0) {
@@ -360,33 +342,23 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
 
     num result = math.sqrt(value);
-
     String formattedResult = _formatNumber(result);
 
     int operatorIndex = _findLastBinaryOperator();
-
     bool isPartOfExpression = operatorIndex != -1;
 
     setState(() {
       _replaceCurrentNumber(formattedResult);
-
       _isEquationFinished = !isPartOfExpression;
-
-      _addHistory(
-        "√($currentText) = $formattedResult",
-      );
+      _addHistory("√($currentText) = $formattedResult");
     });
   }
 
   void _reciprocal() {
     String? currentText = _getCurrentNumber();
-
     if (currentText == null) return;
 
-    num? value = num.tryParse(
-      currentText.replaceAll(",", "."),
-    );
-
+    num? value = num.tryParse(currentText.replaceAll(",", "."));
     if (value == null) return;
 
     if (value == 0) {
@@ -398,51 +370,35 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
 
     num result = 1 / value;
-
     String formattedResult = _formatNumber(result);
 
     int operatorIndex = _findLastBinaryOperator();
-
     bool isPartOfExpression = operatorIndex != -1;
 
     setState(() {
       _replaceCurrentNumber(formattedResult);
-
       _isEquationFinished = !isPartOfExpression;
-
-      _addHistory(
-        "1/($currentText) = $formattedResult",
-      );
+      _addHistory("1/($currentText) = $formattedResult");
     });
   }
 
   void _percent() {
     String? currentText = _getCurrentNumber();
-
     if (currentText == null) return;
 
-    num? value = num.tryParse(
-      currentText.replaceAll(",", "."),
-    );
-
+    num? value = num.tryParse(currentText.replaceAll(",", "."));
     if (value == null) return;
 
     num result = value / 100;
-
     String formattedResult = _formatNumber(result);
 
     int operatorIndex = _findLastBinaryOperator();
-
     bool isPartOfExpression = operatorIndex != -1;
 
     setState(() {
       _replaceCurrentNumber(formattedResult);
-
       _isEquationFinished = !isPartOfExpression;
-
-      _addHistory(
-        "$currentText% = $formattedResult",
-      );
+      _addHistory("$currentText% = $formattedResult");
     });
   }
 
@@ -452,11 +408,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     setState(() {
       if (_isEquationFinished) {
         num? value = _evaluateExpression(_display);
-
         if (value != null) {
           _display = _formatNumber(-value);
         }
-
         return;
       }
 
@@ -471,11 +425,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           _display = "-$_display";
         }
       } else {
-        String before =
-            _display.substring(0, operatorIndex + 1);
-
-        String currentNumber =
-            _display.substring(operatorIndex + 1);
+        String before = _display.substring(0, operatorIndex + 1);
+        String currentNumber = _display.substring(operatorIndex + 1);
 
         if (currentNumber.isEmpty) {
           return;
@@ -505,8 +456,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (operatorIndex == -1) {
         _display = "0";
       } else {
-        _display =
-            _display.substring(0, operatorIndex + 1);
+        _display = _display.substring(0, operatorIndex + 1);
       }
     });
   }
@@ -520,8 +470,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       }
 
       if (_display.length > 1) {
-        _display =
-            _display.substring(0, _display.length - 1);
+        _display = _display.substring(0, _display.length - 1);
 
         if (_display == "-") {
           _display = "0";
@@ -532,16 +481,45 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     });
   }
 
+  // MC: xóa giá trị đang lưu trong bộ nhớ.
+  void _memoryClear() {
+    num oldMemory = _memory;
+
+    setState(() {
+      _memory = 0;
+      _hasMemory = false;
+      _addMemoryHistory(
+        "MC: ${_formatNumber(oldMemory)} → M = 0",
+      );
+    });
+
+    _showMessage("Memory cleared");
+  }
+
+  // MR: gọi lại giá trị đang lưu trong bộ nhớ lên màn hình.
+  void _memoryRecall() {
+    setState(() {
+      _display = _formatNumber(_memory);
+      _isEquationFinished = true;
+      _addMemoryHistory(
+        "MR: ${_formatNumber(_memory)}",
+      );
+    });
+
+    _showMessage(
+      "Memory recalled: ${_formatNumber(_memory)}",
+    );
+  }
+
   void _memoryStore() {
     num? value = _evaluateCurrentValue();
-
     if (value == null) return;
 
     String formattedValue = _formatNumber(value);
 
     setState(() {
       _memory = value;
-
+      _hasMemory = true;
       _addMemoryHistory(
         "MS: $formattedValue → M = ${_formatNumber(_memory)}",
       );
@@ -554,16 +532,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _memoryAdd() {
     num? value = _evaluateCurrentValue();
-
     if (value == null) return;
 
     num oldMemory = _memory;
-
     String formattedValue = _formatNumber(value);
 
     setState(() {
       _memory += value;
-
+      _hasMemory = true;
       _addMemoryHistory(
         "M+: ${_formatNumber(oldMemory)} + "
         "$formattedValue = ${_formatNumber(_memory)}",
@@ -577,16 +553,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _memorySubtract() {
     num? value = _evaluateCurrentValue();
-
     if (value == null) return;
 
     num oldMemory = _memory;
-
     String formattedValue = _formatNumber(value);
 
     setState(() {
       _memory -= value;
-
+      _hasMemory = true;
       _addMemoryHistory(
         "M-: ${_formatNumber(oldMemory)} - "
         "$formattedValue = ${_formatNumber(_memory)}",
@@ -641,9 +615,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             builder: (context, setModalState) {
               return SafeArea(
                 child: SizedBox(
-                  height:
-                      MediaQuery.of(context).size.height *
-                      0.60,
+                  height: MediaQuery.of(context).size.height * 0.60,
                   child: Column(
                     children: [
                       const TabBar(
@@ -658,7 +630,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                           ),
                         ],
                       ),
-
                       Expanded(
                         child: TabBarView(
                           children: [
@@ -666,12 +637,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                               children: [
                                 Padding(
                                   padding:
-                                      const EdgeInsets.fromLTRB(
-                                    20,
-                                    10,
-                                    12,
-                                    5,
-                                  ),
+                                      const EdgeInsets.fromLTRB(20, 10, 12, 5),
                                   child: Row(
                                     children: [
                                       const Expanded(
@@ -679,21 +645,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                           "History",
                                           style: TextStyle(
                                             fontSize: 18,
-                                            fontWeight:
-                                                FontWeight.bold,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-
                                       if (_history.isNotEmpty)
                                         IconButton(
-                                          tooltip:
-                                              "Clear History",
+                                          tooltip: "Clear History",
                                           onPressed: () {
                                             setState(() {
                                               _history.clear();
                                             });
-
                                             setModalState(() {});
                                           },
                                           icon: const Icon(
@@ -703,35 +665,26 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                     ],
                                   ),
                                 ),
-
                                 const Divider(height: 1),
-
                                 Expanded(
                                   child: _history.isEmpty
                                       ? const Center(
                                           child: Text(
                                             "No history",
                                             style: TextStyle(
-                                              color:
-                                                  Colors.grey,
+                                              color: Colors.grey,
                                               fontSize: 16,
                                             ),
                                           ),
                                         )
                                       : ListView.separated(
-                                          padding:
-                                              const EdgeInsets.symmetric(
+                                          padding: const EdgeInsets.symmetric(
                                             vertical: 8,
                                           ),
-                                          itemCount:
-                                              _history.length,
-                                          separatorBuilder:
-                                              (context, index) =>
-                                                  const Divider(
-                                            height: 1,
-                                          ),
-                                          itemBuilder:
-                                              (context, index) {
+                                          itemCount: _history.length,
+                                          separatorBuilder: (context, index) =>
+                                              const Divider(height: 1),
+                                          itemBuilder: (context, index) {
                                             return ListTile(
                                               onTap: () {
                                                 _useSavedValue(
@@ -740,10 +693,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                               },
                                               title: Text(
                                                 _history[index],
-                                                textAlign:
-                                                    TextAlign.right,
-                                                style:
-                                                    const TextStyle(
+                                                textAlign: TextAlign.right,
+                                                style: const TextStyle(
                                                   fontSize: 20,
                                                 ),
                                               ),
@@ -753,44 +704,32 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                 ),
                               ],
                             ),
-
                             Column(
                               children: [
                                 Padding(
                                   padding:
-                                      const EdgeInsets.fromLTRB(
-                                    20,
-                                    10,
-                                    12,
-                                    5,
-                                  ),
+                                      const EdgeInsets.fromLTRB(20, 10, 12, 5),
                                   child: Row(
                                     children: [
                                       Expanded(
                                         child: Text(
                                           "Memory: ${_formatNumber(_memory)}",
-                                          style:
-                                              const TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 18,
-                                            fontWeight:
-                                                FontWeight.bold,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-
                                       if (_memory != 0 ||
-                                          _memoryHistory
-                                              .isNotEmpty)
+                                          _memoryHistory.isNotEmpty)
                                         IconButton(
-                                          tooltip:
-                                              "Clear Memory",
+                                          tooltip: "Clear Memory",
                                           onPressed: () {
                                             setState(() {
                                               _memory = 0;
-                                              _memoryHistory
-                                                  .clear();
+                                              _hasMemory = false;
+                                              _memoryHistory.clear();
                                             });
-
                                             setModalState(() {});
                                           },
                                           icon: const Icon(
@@ -800,54 +739,46 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                     ],
                                   ),
                                 ),
-
                                 const Divider(height: 1),
-
                                 Expanded(
-                                  child:
-                                      _memoryHistory.isEmpty
+                                  child: _memoryHistory.isEmpty
                                       ? const Center(
                                           child: Text(
                                             "No memory history",
                                             style: TextStyle(
-                                              color:
-                                                  Colors.grey,
+                                              color: Colors.grey,
                                               fontSize: 16,
                                             ),
                                           ),
                                         )
                                       : ListView.separated(
-                                          padding:
-                                              const EdgeInsets.symmetric(
+                                          padding: const EdgeInsets.symmetric(
                                             vertical: 8,
                                           ),
-                                          itemCount:
-                                              _memoryHistory
-                                                  .length,
-                                          separatorBuilder:
-                                              (context, index) =>
-                                                  const Divider(
-                                            height: 1,
-                                          ),
-                                          itemBuilder:
-                                              (context, index) {
-                                            return ListTile(
-                                              onTap: () {
-                                                _useSavedValue(
-                                                  _memoryHistory[
-                                                      index],
-                                                );
+                                          itemCount: _memoryHistory.length,
+                                          separatorBuilder: (context, index) =>
+                                              const Divider(height: 1),
+                                          itemBuilder: (context, index) {
+                                            final String item =
+                                                _memoryHistory[index];
+
+                                            return _MemoryHistoryItem(
+                                              item: item,
+                                              onUseValue: () {
+                                                _useSavedValue(item);
                                               },
-                                              title: Text(
-                                                _memoryHistory[
-                                                    index],
-                                                textAlign:
-                                                    TextAlign.right,
-                                                style:
-                                                    const TextStyle(
-                                                  fontSize: 20,
-                                                ),
-                                              ),
+                                              onMemoryClear: () {
+                                                _memoryClear();
+                                                setModalState(() {});
+                                              },
+                                              onMemoryAdd: () {
+                                                _memoryAdd();
+                                                setModalState(() {});
+                                              },
+                                              onMemorySubtract: () {
+                                                _memorySubtract();
+                                                setModalState(() {});
+                                              },
                                             );
                                           },
                                         ),
@@ -896,8 +827,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   bool _containsDivisionByZero(String expression) {
-    String converted =
-        expression.replaceAll(",", ".");
+    String converted = expression.replaceAll(",", ".");
 
     RegExp divideByZero = RegExp(
       r'÷-?0+(?:\.0+)?(?=$|[+\-×÷])',
@@ -933,22 +863,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String _formatNumber(num value) {
     double number = value.toDouble();
 
-    if ((number - number.round()).abs() <
-        0.00000001) {
+    if ((number - number.round()).abs() < 0.00000001) {
       return number.round().toString();
     }
 
     String result = number.toStringAsFixed(8);
 
     result = result
-        .replaceFirst(
-          RegExp(r'0+$'),
-          '',
-        )
-        .replaceFirst(
-          RegExp(r'\.$'),
-          '',
-        );
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
 
     return result.replaceAll(".", ",");
   }
@@ -959,9 +882,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          duration: const Duration(
-            seconds: 1,
-          ),
+          duration: const Duration(seconds: 1),
         ),
       );
   }
@@ -991,7 +912,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           ),
         ],
       ),
-
       body: SafeArea(
         child: Column(
           children: [
@@ -1006,8 +926,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   _display,
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize:
-                        _display.length > 15 ? 42 : 64,
+                    fontSize: _display.length > 15 ? 42 : 64,
                     fontWeight: FontWeight.w300,
                   ),
                   maxLines: 1,
@@ -1073,6 +992,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       child: Row(
         children: [
           Expanded(
+            child: _buildMemoryButton("MC"),
+          ),
+          Expanded(
+            child: _buildMemoryButton("MR"),
+          ),
+          Expanded(
             child: _buildMemoryButton("M+"),
           ),
           Expanded(
@@ -1087,12 +1012,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   Widget _buildMemoryButton(String text) {
+    final bool isMemoryDependent = text == "MC" || text == "MR";
+    final bool isDisabled = isMemoryDependent && !_hasMemory;
+
     return TextButton(
-      onPressed: () => _onPressed(text),
+      onPressed: isDisabled ? null : () => _onPressed(text),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.grey,
+        style: TextStyle(
+          color: isDisabled ? Colors.grey.shade700 : Colors.grey.shade400,
           fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
@@ -1166,11 +1094,115 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           text,
           style: TextStyle(
             fontSize: isSpecial ? 25 : 19,
-            fontWeight: isSpecial
-                ? FontWeight.bold
-                : FontWeight.normal,
+            fontWeight:
+                isSpecial ? FontWeight.bold : FontWeight.normal,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MemoryHistoryItem extends StatefulWidget {
+  final String item;
+  final VoidCallback onUseValue;
+  final VoidCallback onMemoryClear;
+  final VoidCallback onMemoryAdd;
+  final VoidCallback onMemorySubtract;
+
+  const _MemoryHistoryItem({
+    required this.item,
+    required this.onUseValue,
+    required this.onMemoryClear,
+    required this.onMemoryAdd,
+    required this.onMemorySubtract,
+  });
+
+  @override
+  State<_MemoryHistoryItem> createState() => _MemoryHistoryItemState();
+}
+
+class _MemoryHistoryItemState extends State<_MemoryHistoryItem> {
+  bool _showActions = false;
+
+  void _setActions(bool value) {
+    if (_showActions == value) return;
+    setState(() {
+      _showActions = value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _setActions(true),
+      onExit: (_) => _setActions(false),
+      child: InkWell(
+        // Android emulator/mobile: tap once to show/hide the buttons.
+        onTap: () => _setActions(!_showActions),
+        onDoubleTap: widget.onUseValue,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.item,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 20,
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 150),
+                child: _showActions
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            _memoryActionButton(
+                              "MC",
+                              widget.onMemoryClear,
+                            ),
+                            const SizedBox(width: 6),
+                            _memoryActionButton(
+                              "M+",
+                              widget.onMemoryAdd,
+                            ),
+                            const SizedBox(width: 6),
+                            _memoryActionButton(
+                              "M-",
+                              widget.onMemorySubtract,
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _memoryActionButton(
+    String text,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      height: 34,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(0, 34),
+        ),
+        child: Text(text),
       ),
     );
   }
